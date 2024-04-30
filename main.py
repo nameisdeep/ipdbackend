@@ -2,8 +2,19 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 import json
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
 
 # Define data models using Pydantic for input validation
 class WorkerData(BaseModel):
@@ -33,6 +44,13 @@ secrets = load_secrets()
 # Database Client Setup
 client = AsyncIOMotorClient(secrets["mongodbKey"])
 db = client.user  # Adjust database access according to your MongoDB setup
+
+
+
+@app.get("/")
+async def read_root():
+    return {"Hello": "World"}
+
 
 @app.post("/workers/")
 async def add_worker(worker: WorkerData):
