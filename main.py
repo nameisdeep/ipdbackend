@@ -38,7 +38,7 @@ db = client.user  # Adjust database access according to your MongoDB setup
 async def add_worker(worker: WorkerData):
     collection = db.availableFarmworker
     await collection.insert_one(worker.dict())
-    return {"message": "Worker added successfully!"}
+    return {"message": "Worker added successfully! thanks"}
 
 @app.post("/work/")
 async def add_work(work: dict):  # Define the data model appropriately
