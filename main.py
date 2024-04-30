@@ -2,19 +2,10 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 import json
-from fastapi.middleware.cors import CORSMiddleware
+from bson import json_util
+
 
 app = FastAPI()
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
-
 
 # Define data models using Pydantic for input validation
 class WorkerData(BaseModel):
@@ -45,18 +36,11 @@ secrets = load_secrets()
 client = AsyncIOMotorClient(secrets["mongodbKey"])
 db = client.user  # Adjust database access according to your MongoDB setup
 
-
-
-@app.get("/")
-async def read_root():
-    return {"Hello": "World"}
-
-
 @app.post("/workers/")
 async def add_worker(worker: WorkerData):
     collection = db.availableFarmworker
     await collection.insert_one(worker.dict())
-    return {"message": "Worker added successfully! thanks"}
+    return {"message": "Worker added successfully!"}
 
 @app.post("/work/")
 async def add_work(work: dict):  # Define the data model appropriately
@@ -90,9 +74,13 @@ async def get_all_bookings(UID: str):
 
 @app.get("/farmworkers/")
 async def get_all_farmworkers():
-    collection = db.user.availableFarmworker
-    farmworkers = await collection.find().to_list(length=None)
-    return farmworkers
+    try:
+        collection = db.availableFarmworker
+        farmworkers = await collection.find().to_list(length=None)
+        # Serialize MongoDB objects to JSON, handling ObjectId and other types
+        return json.loads(json_util.dumps(farmworkers))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/news/")
 async def get_news():
