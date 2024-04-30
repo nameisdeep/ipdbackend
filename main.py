@@ -36,6 +36,11 @@ secrets = load_secrets()
 client = AsyncIOMotorClient(secrets["mongodbKey"])
 db = client.user  # Adjust database access according to your MongoDB setup
 
+@app.get("/")
+async def read_root():
+    return {"Hello": "World"}
+
+
 @app.post("/workers/")
 async def add_worker(worker: WorkerData):
     collection = db.availableFarmworker
