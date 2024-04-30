@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 import json
 from bson import json_util
-
+import pickle
 
 app = FastAPI()
 
