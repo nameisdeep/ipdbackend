@@ -82,7 +82,10 @@ async def get_all_farmworkers():
     try:
         collection = db.availableFarmworker
         farmworkers = await collection.find().to_list(length=None)
-        return json.loads(json_util.dumps(farmworkers))
+        # Remove '_id' field from each farmworker record
+        for farmworker in farmworkers:
+            farmworker.pop('_id', None)  # Remove '_id' if it exists
+        return farmworkers
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
