@@ -7,7 +7,7 @@ from bson import json_util
 
 app = FastAPI()
 
-# Define data models using Pydantic for input validation
+
 class WorkerData(BaseModel):
     name: str
     userType: str
@@ -19,7 +19,7 @@ class WorkerData(BaseModel):
 class BookingData(BaseModel):
     UID: str
 
-# Placeholder for secrets loading
+
 def load_secrets():
     try:
         with open("secrets.json", "r") as file:
@@ -32,9 +32,9 @@ def load_secrets():
 
 secrets = load_secrets()
 
-# Database Client Setup
+
 client = AsyncIOMotorClient(secrets["mongodbKey"])
-db = client.user  # Adjust database access according to your MongoDB setup
+db = client.user
 
 @app.get("/")
 async def read_root():
@@ -48,7 +48,7 @@ async def add_worker(worker: WorkerData):
     return {"message": "Worker added successfully!"}
 
 @app.post("/work/")
-async def add_work(work: dict):  # Define the data model appropriately
+async def add_work(work: dict): 
     collection = db.work.available
     await collection.insert_one(work)
     return {"message": "Work added successfully!"}
@@ -66,7 +66,7 @@ async def allocate_work(work: BookingData):
         raise HTTPException(status_code=404, detail="Work not found or already allocated.")
 
 @app.post("/bookings/")
-async def add_booking(booking: dict):  # Define the data model appropriately
+async def add_booking(booking: dict): 
     collection = db.bookings[booking['UID']]
     await collection.insert_one(booking)
     return {"message": "Booking added successfully!"}
@@ -82,7 +82,6 @@ async def get_all_farmworkers():
     try:
         collection = db.availableFarmworker
         farmworkers = await collection.find().to_list(length=None)
-        # Serialize MongoDB objects to JSON, handling ObjectId and other types
         return json.loads(json_util.dumps(farmworkers))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
