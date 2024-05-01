@@ -351,6 +351,19 @@ async def register_worker(worker: WorkerData):
     })
     await collection.insert_one(worker_data)
     return {"message": "Worker added successfully!", "UID": worker_data['UID']}
+@app.post("/register/farmer/")
+async def register_worker(worker: WorkerData):
+    collection = db.availableFarmer
+    worker_data = worker.dict()
+    worker_data['UID'] = str(uuid4())
+    worker_data['logIntime'] = datetime.utcnow().isoformat()
+    worker_data['userType'] = "farmer"
+    worker_data['status'] = "available"
+    worker_data['password'] = bcrypt.hash(worker.password)
+
+    await collection.insert_one(worker_data)
+    return {"message": f"farmer added successfully!", "UID": worker_data['UID']}
+
 
 # Login Endpoint
 @app.post("/login/")
@@ -368,7 +381,31 @@ async def login_user(phoneNo: str, password: str):
         raise HTTPException(status_code=404, detail="Invalid credentials or user not found")
 
 # Remaining endpoints would be similarly updated and refactored
+@app.post("/price-calculator")
+def price_calculator(input_data: PriceCalculatorInput):
+    # dynamic_values = get_dynamic_values()
+    # total_price = (dynamic_values["Base_Hourly_Wage"] * input_data.Working_Hours *
+    #                dynamic_values["Supply_Demand_Ratio"] * dynamic_values["Dynamic_Pricing_Multiplier"])
+    url = "https://shiny-telegram-gvxj765gjxrcv5x4-8000.app.github.dev/price-calculator/"
+    payload = json.dumps({
+    "Working_Hours": input_data.Working_Hours,
+    "Crop_Type": input_data.Crop_Type,
+    "Count": input_data.NoOfpeople
+    })
 
+    headers = {
+    'accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Cookie': '.Tunnels.Relay.WebForwarding.Cookies=CfDJ8E0FHi1JCVNKrny-ARCYWxOcQXqDwS8Zf7ybXpfEabuVYz6b59lRegfoQoIMkOdzqK1V1lwRrHmOYwuYJ0mA0Y_4sFofgXuZV27BX3KYO6el-IuSEL5OEEXqYtuxHcST5jgyD4t97FDOhkXWsrPYoKfJ7KeT5FFbx_bl8Bo0cdemyfvBRzrf7QW08t-DXEi49k1o__qaFXCG0rrxrQytvBnYEnMMfY1aNAjPQgd0UJ0yeDCtyWh3BHtQ_r0bqJsJKHaDjjgFLIbnDRJhLLH7sbnaRYMFYkBzFgE7DxN2OTTuo8j9k5TqjNImg3d1-QvkO_F9Fco7iNw3y2Rld8vGO43g1aokNUaT8E8njHNl-rl_wWse83jIsQGsHDV39H_B2sxkCMxJMGxTOWrukFpGGuMz1EWTYR64GHgPCUOvXLEH-nT4mrdOY-9oKK_k1dXBpm5KC081mwrZZT7n5CHYT8OmtDWkzsb_hd7psHbHYZRXGWACc7f0UQAy0na_koEWX4E59GXj1VNS5bs0aolog_0fd-37f3xXiCxdOhcG4diXvPq51y_yR8F6ars_3cJVGUBRJf-KG19bz0tshfo7ep-JOBWE9KR4EYTxdIKiTImuczsSlAVdWf22rK_wDg34jnI3kdLLeqWbsMPMLGrjKVzTEF-iFTQB0VoFpRoPHQuJ35h_HMw6mWoZenbePXFxsdlbIf6oEpFCiSLsIAM4OQbbDNArNp4faEB3ckDBb_bBN13k0puF4R8HAt5WohEMtOyVv-zZq1ywDX_CXBWUrA_1EkOoN1ytUCi27vQwcnMVRI7lpYWvDgT4peLf8q0OIL6kl6OCAMlIeHIM2ScoJ91LGECfeADRwW--Td9XBYzoaTzowKSnIeApdtC4Yp5RHZqQnXxx4Se9QebsvWQi1gmgoZbzK2_8qKbZtgd8AOGqP2IGKRwmtwjXx76ClYhLIYvBmDQKqD6xjlEHfqFPouLXPmwnkjEr3RJsolN__zucc4dr22dbQJe4gEa1PYm1_A'
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+    price=response.json()['Total_Calculated_Price']
+
+    return {
+        "Crop_Type": input_data.Crop_Type,
+        "Calculated_Price": int(price)
+    }
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
