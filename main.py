@@ -289,18 +289,88 @@
 #     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
-from typing import Union
-
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from motor.motor_asyncio import AsyncIOMotorClient
+from datetime import datetime
+from uuid import uuid4
+from passlib.hash import bcrypt
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+# Applying CORS middleware for cross-origin requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+# Load database secrets and initialize database client
+def load_secrets():
+    try:
+        with open("secrets.json", "r") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="secrets.json not found.")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Error decoding secrets.json. Please check the file format.")
+
+secrets = load_secrets()
+client = AsyncIOMotorClient(secrets["mongodbKey"])
+db = client.user
+
+# Define Pydantic models for request validation
+class WorkerData(BaseModel):
+    name: str
+    phoneNo: str
+    location: str
+    password: str
+
+class UserResponseModel(BaseModel):
+    name: str
+    phoneNo: str
+    userType: str
+    location: str
+
+# Register Worker Endpoint
+@app.post("/register/worker/")
+async def register_worker(worker: WorkerData):
+    collection = db.availableFarmworker
+    worker_data = worker.dict()
+    worker_data.update({
+        'UID': str(uuid4()),
+        'logIntime': datetime.utcnow().isoformat(),
+        'userType': "worker",
+        'status': "available",
+        'password': bcrypt.hash(worker.password),
+        'paymentHistory': [0, 0],
+        'currentPayment': 0
+    })
+    await collection.insert_one(worker_data)
+    return {"message": "Worker added successfully!", "UID": worker_data['UID']}
+
+# Login Endpoint
+@app.post("/login/")
+async def login_user(phoneNo: str, password: str):
+    user = await db.availableFarmworker.find_one({"phoneNo": phoneNo}) or await db.availableFarmer.find_one({"phoneNo": phoneNo})
+    if user and bcrypt.verify(password, user['password']):
+        user_data = {
+            "name": user["name"],
+            "phoneNo": user["phoneNo"],
+            "userType": user["userType"],
+            "Location": user["location"]
+        }
+        return {"message": "Login successful", "user": user_data}
+    else:
+        raise HTTPException(status_code=404, detail="Invalid credentials or user not found")
+
+# Remaining endpoints would be similarly updated and refactored
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
