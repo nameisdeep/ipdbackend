@@ -294,10 +294,13 @@ from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
 from uuid import uuid4
+from bson import json_util
 from passlib.hash import bcrypt
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import requests
+from bson import ObjectId
+
 app = FastAPI()
 
 # Applying CORS middleware for cross-origin requests
