@@ -296,7 +296,7 @@ from datetime import datetime
 from uuid import uuid4
 from passlib.hash import bcrypt
 from fastapi.middleware.cors import CORSMiddleware
-
+import json
 app = FastAPI()
 
 # Applying CORS middleware for cross-origin requests
