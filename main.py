@@ -297,6 +297,7 @@ from uuid import uuid4
 from passlib.hash import bcrypt
 from fastapi.middleware.cors import CORSMiddleware
 import json
+import requests
 app = FastAPI()
 
 # Applying CORS middleware for cross-origin requests
@@ -381,6 +382,12 @@ async def login_user(phoneNo: str, password: str):
         raise HTTPException(status_code=404, detail="Invalid credentials or user not found")
 
 # Remaining endpoints would be similarly updated and refactored
+class PriceCalculatorInput(BaseModel):
+    Working_Hours: int            # Number of working hours
+    Crop_Type: str                # Type of crop, e.g., "Wheat"
+    NoOfpeople : int
+
+
 @app.post("/price-calculator")
 def price_calculator(input_data: PriceCalculatorInput):
     # dynamic_values = get_dynamic_values()
