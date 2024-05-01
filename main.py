@@ -439,6 +439,22 @@ def worker_model_from_db(worker):
     worker_data['_id'] = str(worker['_id'])
     return Worker(**worker_data)
 
+class Worker(BaseModel):
+
+    UID: str
+    name: str
+    phoneNo: str
+    Location: str
+    logIntime: str
+    userType: str
+    status: str
+
+# Helper function to parse MongoDB results into Pydantic models
+def worker_model_from_db(worker):
+    worker_data = worker.copy()
+    worker_data['_id'] = str(worker['_id'])
+    return Worker(**worker_data)
+
 @app.post("/allocate-workers/", response_model=list[Worker])
 async def allocate_workers(num_workers: int,fixed_price: int):
     pricePP=fixed_price/num_workers
