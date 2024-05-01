@@ -466,20 +466,33 @@ async def allocate_workers(num_workers: int,fixed_price: int):
     return allocated_workers
 
 
-# change status
 @app.post("/reset-workers-status/")
 async def reset_workers_status():
     workers_collection = db.availableFarmworker
-    # Update the status of all workers in the collection to 'available'
-    result = await workers_collection.update_many(
-        {},  # This empty query matches all documents
-        {'$set': {'status': 'available','currentPayment': 0,"paymentHistory":[0,0]}}
-    )
-    
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="No workers status were updated, possibly they were already 'available'.")
+    try:
+        # Attempt to update the status of all workers
+        result = await workers_collection.update_many(
+            {},  # This empty query matches all documents
+            {
+                '$set': {
+                    'status': 'available',
+                    'currentPayment': 0,
+                    'paymentHistory': [0, 0]
+                }
+            }
+        )
+        
+        # Check if any documents were actually updated
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="No workers' statuses were updated, possibly they were already 'available'.")
 
-    return {"message": f"Successfully updated the status of {result.modified_count} workers to available."}
+        # Successful update response
+        return {"message": f"Successfully updated the status of {result.modified_count} workers to available."}
+
+    except Exception as e:
+        # Catch and log unexpected exceptions
+        print(f"An error occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while updating workers' statuses.")
 
 
 if __name__ == "__main__":
