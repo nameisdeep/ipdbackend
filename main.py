@@ -112,6 +112,41 @@ async def login_user(phoneNo: str, password: str):
         raise HTTPException(status_code=404, detail="User not found")
 
 
+class PriceCalculatorInput(BaseModel):
+    Working_Hours: int            # Number of working hours
+    Crop_Type: str                # Type of crop, e.g., "Wheat"
+    NoOfpeople : int
+
+def get_dynamic_values():
+    now = datetime.now()
+    
+    return {
+        "Day_of_Week": now.weekday(),  
+        "Month": now.month,
+        "Base_Hourly_Wage": 12.00,  
+        "Supply_Demand_Ratio": 1.2,  
+        "Dynamic_Pricing_Multiplier": 1.44  
+    }
+
+@app.post("/price-calculator")
+def price_calculator(input_data: PriceCalculatorInput):
+    dynamic_values = get_dynamic_values()
+    total_price = (dynamic_values["Base_Hourly_Wage"] * input_data.Working_Hours *
+                   dynamic_values["Supply_Demand_Ratio"] * dynamic_values["Dynamic_Pricing_Multiplier"])
+
+    return {
+        "Crop_Type": input_data.Crop_Type,
+        "Calculated_Price": total_price,
+        "Day_of_Week": dynamic_values["Day_of_Week"],
+        "Month": dynamic_values["Month"]
+    }
+
+
+
+
+
+
+
 class Worker(BaseModel):
    
     UID: str
