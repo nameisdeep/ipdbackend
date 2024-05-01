@@ -510,6 +510,25 @@ async def reset_workers_status():
         print(f"An error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred while updating workers' statuses.")
 
+@app.get("/worker-payment/")
+async def get_worker_payment(UID: str, name: str):
+    workers_collection = db.availableFarmworker
+    """
+    Fetches the current payment of a worker based on UID and name if the worker's status is 'busy'.
+    """
+    worker = await workers_collection.find_one({"UID": UID, "name": name})
+    if worker is None:
+        raise HTTPException(status_code=404, detail="Worker not found.")
+
+    if worker['status'] != 'busy':
+        raise HTTPException(status_code=400, detail="Worker is not currently busy.")
+
+    return {
+        "UID": UID,
+        "Name": name,
+        "CurrentPayment": worker['currentPayment']
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
