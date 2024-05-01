@@ -19,7 +19,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import uvicorn
 from bson import ObjectId
 from fastapi.middleware.cors import CORSMiddleware
-
+import requests
+import json
 
 app = FastAPI()
 
@@ -70,31 +71,40 @@ secrets = load_secrets()
 client = AsyncIOMotorClient(secrets["mongodbKey"])
 db = client.user
 
+
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+
 @app.post("/register/worker/")
-async def register_worker(user_type: str, worker: WorkerData):
+async def register_worker(worker: WorkerData):
     collection = db.availableFarmworker 
     worker_data = worker.dict()
     worker_data['UID'] = str(uuid4())
     worker_data['logIntime'] = datetime.utcnow().isoformat()
-    worker_data['userType'] = user_type
+    worker_data['userType'] = "worker"
     worker_data['status'] = "available"
     worker_data['password'] = bcrypt.hash(worker.password)
+    worker_data['paymentHistory'] = [0,0]
+    worker_data['currentPayment'] = 0
 
     await collection.insert_one(worker_data)
-    return {"message": f"{user_type.capitalize()} added successfully!", "UID": worker_data['UID']}
+    return {"message": f"worker added successfully!", "UID": worker_data['UID']}
 
 @app.post("/register/farmer/")
-async def register_worker(user_type: str, worker: WorkerData):
+async def register_worker(worker: WorkerData):
     collection = db.availableFarmer
     worker_data = worker.dict()
     worker_data['UID'] = str(uuid4())
     worker_data['logIntime'] = datetime.utcnow().isoformat()
-    worker_data['userType'] = user_type
+    worker_data['userType'] = "farmer"
     worker_data['status'] = "available"
     worker_data['password'] = bcrypt.hash(worker.password)
 
     await collection.insert_one(worker_data)
-    return {"message": f"{user_type.capitalize()} added successfully!", "UID": worker_data['UID']}
+    return {"message": f"farmer added successfully!", "UID": worker_data['UID']}
 
 
 @app.post("/login/")
@@ -112,33 +122,40 @@ async def login_user(phoneNo: str, password: str):
         raise HTTPException(status_code=404, detail="User not found")
 
 
+
+# price calculator code
+
 class PriceCalculatorInput(BaseModel):
     Working_Hours: int            # Number of working hours
     Crop_Type: str                # Type of crop, e.g., "Wheat"
     NoOfpeople : int
 
-def get_dynamic_values():
-    now = datetime.now()
-    
-    return {
-        "Day_of_Week": now.weekday(),  
-        "Month": now.month,
-        "Base_Hourly_Wage": 12.00,  
-        "Supply_Demand_Ratio": 1.2,  
-        "Dynamic_Pricing_Multiplier": 1.44  
-    }
+
 
 @app.post("/price-calculator")
 def price_calculator(input_data: PriceCalculatorInput):
-    dynamic_values = get_dynamic_values()
-    total_price = (dynamic_values["Base_Hourly_Wage"] * input_data.Working_Hours *
-                   dynamic_values["Supply_Demand_Ratio"] * dynamic_values["Dynamic_Pricing_Multiplier"])
+    # dynamic_values = get_dynamic_values()
+    # total_price = (dynamic_values["Base_Hourly_Wage"] * input_data.Working_Hours *
+    #                dynamic_values["Supply_Demand_Ratio"] * dynamic_values["Dynamic_Pricing_Multiplier"])
+    url = "https://shiny-telegram-gvxj765gjxrcv5x4-8000.app.github.dev/price-calculator/"
+    payload = json.dumps({
+    "Working_Hours": input_data.Working_Hours,
+    "Crop_Type": input_data.Crop_Type,
+    "Count": input_data.NoOfpeople
+    })
+
+    headers = {
+    'accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Cookie': '.Tunnels.Relay.WebForwarding.Cookies=CfDJ8E0FHi1JCVNKrny-ARCYWxOcQXqDwS8Zf7ybXpfEabuVYz6b59lRegfoQoIMkOdzqK1V1lwRrHmOYwuYJ0mA0Y_4sFofgXuZV27BX3KYO6el-IuSEL5OEEXqYtuxHcST5jgyD4t97FDOhkXWsrPYoKfJ7KeT5FFbx_bl8Bo0cdemyfvBRzrf7QW08t-DXEi49k1o__qaFXCG0rrxrQytvBnYEnMMfY1aNAjPQgd0UJ0yeDCtyWh3BHtQ_r0bqJsJKHaDjjgFLIbnDRJhLLH7sbnaRYMFYkBzFgE7DxN2OTTuo8j9k5TqjNImg3d1-QvkO_F9Fco7iNw3y2Rld8vGO43g1aokNUaT8E8njHNl-rl_wWse83jIsQGsHDV39H_B2sxkCMxJMGxTOWrukFpGGuMz1EWTYR64GHgPCUOvXLEH-nT4mrdOY-9oKK_k1dXBpm5KC081mwrZZT7n5CHYT8OmtDWkzsb_hd7psHbHYZRXGWACc7f0UQAy0na_koEWX4E59GXj1VNS5bs0aolog_0fd-37f3xXiCxdOhcG4diXvPq51y_yR8F6ars_3cJVGUBRJf-KG19bz0tshfo7ep-JOBWE9KR4EYTxdIKiTImuczsSlAVdWf22rK_wDg34jnI3kdLLeqWbsMPMLGrjKVzTEF-iFTQB0VoFpRoPHQuJ35h_HMw6mWoZenbePXFxsdlbIf6oEpFCiSLsIAM4OQbbDNArNp4faEB3ckDBb_bBN13k0puF4R8HAt5WohEMtOyVv-zZq1ywDX_CXBWUrA_1EkOoN1ytUCi27vQwcnMVRI7lpYWvDgT4peLf8q0OIL6kl6OCAMlIeHIM2ScoJ91LGECfeADRwW--Td9XBYzoaTzowKSnIeApdtC4Yp5RHZqQnXxx4Se9QebsvWQi1gmgoZbzK2_8qKbZtgd8AOGqP2IGKRwmtwjXx76ClYhLIYvBmDQKqD6xjlEHfqFPouLXPmwnkjEr3RJsolN__zucc4dr22dbQJe4gEa1PYm1_A'
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+    price=response.json()['Total_Calculated_Price']
 
     return {
         "Crop_Type": input_data.Crop_Type,
-        "Calculated_Price": total_price,
-        "Day_of_Week": dynamic_values["Day_of_Week"],
-        "Month": dynamic_values["Month"]
+        "Calculated_Price": int(price)
     }
 
 
@@ -164,7 +181,9 @@ def worker_model_from_db(worker):
     return Worker(**worker_data)
 
 @app.post("/allocate-workers/", response_model=list[Worker])
-async def allocate_workers(num_workers: int):
+async def allocate_workers(num_workers: int,fixed_price: int):
+    pricePP=fixed_price/num_workers
+    print(int(pricePP))
     workers_collection = db.availableFarmworker
     # Find available workers and limit to the number requested
     available_workers_cursor = workers_collection.find({'status': 'available'}).limit(num_workers)
@@ -174,7 +193,8 @@ async def allocate_workers(num_workers: int):
         # Attempt to update the worker status to 'allocated'
         result = await workers_collection.update_one(
             {'_id': worker['_id'], 'status': 'available'},  # Check status again to avoid race conditions
-            {'$set': {'status': 'bussy'}}
+            {'$set': {'status': 'busy', 'currentPayment': int(pricePP)}},
+           
         )
         if result.modified_count:
             worker['status'] = 'allocated'
@@ -195,7 +215,7 @@ async def reset_workers_status():
     # Update the status of all workers in the collection to 'available'
     result = await workers_collection.update_many(
         {},  # This empty query matches all documents
-        {'$set': {'status': 'available'}}
+        {'$set': {'status': 'available','currentPayment': 0,"paymentHistory":[0,0]}}
     )
     
     if result.modified_count == 0:
