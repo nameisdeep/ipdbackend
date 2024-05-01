@@ -423,21 +423,7 @@ def price_calculator(input_data: PriceCalculatorInput):
 
 
 
-class Worker(BaseModel):
 
-    UID: str
-    name: str
-    phoneNo: str
-    Location: str
-    logIntime: str
-    userType: str
-    status: str
-
-# Helper function to parse MongoDB results into Pydantic models
-def worker_model_from_db(worker):
-    worker_data = worker.copy()
-    worker_data['_id'] = str(worker['_id'])
-    return Worker(**worker_data)
 
 class Worker(BaseModel):
 
