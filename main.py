@@ -424,7 +424,7 @@ def price_calculator(input_data: PriceCalculatorInput):
 
 
 class Worker(BaseModel):
-   
+
     UID: str
     name: str
     phoneNo: str
@@ -453,7 +453,7 @@ async def allocate_workers(num_workers: int,fixed_price: int):
         result = await workers_collection.update_one(
             {'_id': worker['_id'], 'status': 'available'},  # Check status again to avoid race conditions
             {'$set': {'status': 'busy', 'currentPayment': int(pricePP)}},
-           
+
         )
         if result.modified_count:
             worker['status'] = 'allocated'
