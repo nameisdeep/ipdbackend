@@ -336,6 +336,10 @@ class UserResponseModel(BaseModel):
     userType: str
     location: str
 
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
 # Register Worker Endpoint
 @app.post("/register/worker/")
 async def register_worker(worker: WorkerData):
@@ -413,6 +417,68 @@ def price_calculator(input_data: PriceCalculatorInput):
         "Crop_Type": input_data.Crop_Type,
         "Calculated_Price": int(price)
     }
+
+
+
+class Worker(BaseModel):
+   
+    UID: str
+    name: str
+    phoneNo: str
+    Location: str
+    logIntime: str
+    userType: str
+    status: str
+
+# Helper function to parse MongoDB results into Pydantic models
+def worker_model_from_db(worker):
+    worker_data = worker.copy()
+    worker_data['_id'] = str(worker['_id'])
+    return Worker(**worker_data)
+
+@app.post("/allocate-workers/", response_model=list[Worker])
+async def allocate_workers(num_workers: int,fixed_price: int):
+    pricePP=fixed_price/num_workers
+    print(int(pricePP))
+    workers_collection = db.availableFarmworker
+    # Find available workers and limit to the number requested
+    available_workers_cursor = workers_collection.find({'status': 'available'}).limit(num_workers)
+    allocated_workers = []
+
+    async for worker in available_workers_cursor:
+        # Attempt to update the worker status to 'allocated'
+        result = await workers_collection.update_one(
+            {'_id': worker['_id'], 'status': 'available'},  # Check status again to avoid race conditions
+            {'$set': {'status': 'busy', 'currentPayment': int(pricePP)}},
+           
+        )
+        if result.modified_count:
+            worker['status'] = 'allocated'
+            allocated_workers.append(worker_model_from_db(worker))
+
+    # Check if any workers were allocated
+    if not allocated_workers:
+        raise HTTPException(status_code=404, detail="No available workers to allocate.")
+
+    return allocated_workers
+
+
+# change status
+@app.post("/reset-workers-status/")
+async def reset_workers_status():
+    workers_collection = db.availableFarmworker
+    # Update the status of all workers in the collection to 'available'
+    result = await workers_collection.update_many(
+        {},  # This empty query matches all documents
+        {'$set': {'status': 'available','currentPayment': 0,"paymentHistory":[0,0]}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="No workers status were updated, possibly they were already 'available'.")
+
+    return {"message": f"Successfully updated the status of {result.modified_count} workers to available."}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
