@@ -400,7 +400,7 @@ def price_calculator(input_data: PriceCalculatorInput):
     # dynamic_values = get_dynamic_values()
     # total_price = (dynamic_values["Base_Hourly_Wage"] * input_data.Working_Hours *
     #                dynamic_values["Supply_Demand_Ratio"] * dynamic_values["Dynamic_Pricing_Multiplier"])
-    url = "https://shiny-telegram-gvxj765gjxrcv5x4-8000.app.github.dev/price-calculator/"
+    url = "https://supreme-happiness-jprvq94x65x3jqj6-8000.app.github.dev/price-calculator/"
     payload = json.dumps({
     "Working_Hours": input_data.Working_Hours,
     "Crop_Type": input_data.Crop_Type,
