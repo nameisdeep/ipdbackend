@@ -415,7 +415,8 @@ def price_calculator(input_data: PriceCalculatorInput):
 
     response = requests.request("POST", url, headers=headers, data=payload)
     price=response.json()['Total_Calculated_Price']
-
+    print(input_data.NoOfpeople)
+    print(price)
     return {
         "Crop_Type": input_data.Crop_Type,
         "Calculated_Price": int(price)
